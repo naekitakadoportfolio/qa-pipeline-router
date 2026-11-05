@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QA Pipeline Router · Nae Kitakado</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--cocoa:#5B3A3A;--ink:#3E2A2F;--mauve:#8A6470;--blush:#FBE3EC;--pink:#F4B4CD;--rose:#F2A7C3;--card:#fff;--bg:#FDF4F7;--line:#F3D3DF}
+*{box-sizing:border-box}body{margin:0;font-family:'DM Sans',Inter,sans-serif;color:var(--ink);background:var(--bg)}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 16px 48px}
+.hero{background:linear-gradient(120deg,var(--blush),var(--pink));border-radius:24px;padding:28px;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.3)}
+.tag{display:inline-block;background:#fff;color:var(--cocoa);font-size:12px;letter-spacing:.14em;font-weight:600;border-radius:99px;padding:4px 12px}
+h1{color:var(--cocoa);font-size:clamp(28px,5vw,44px);margin:10px 0 6px;font-weight:600}
+.hero p{margin:0;max-width:640px;position:relative;z-index:1}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--cocoa);margin:0 0 12px}
+label{font-size:13px;font-weight:600;color:var(--mauve);display:block;margin:10px 0 4px}
+select,textarea,input{width:100%;font:inherit;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff;color:var(--ink)}
+input[type=range],input[type=checkbox]{accent-color:var(--cocoa)}textarea{min-height:120px;resize:vertical}
+button{background:var(--cocoa);color:#fff;border:0;border-radius:99px;padding:11px 20px;font:inherit;font-weight:600;letter-spacing:.06em;cursor:pointer;margin-top:12px}
+button.ghost{background:#fff;color:var(--cocoa);border:1px solid var(--rose)}
+.pill{display:inline-block;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600;margin:2px}
+.high{background:#F9D0D6;color:#8A2C3A}.medium{background:#FCE6C8;color:#7A4E12}.low{background:#DDF1E4;color:#1E5A36}
+ul{padding-left:18px;margin:6px 0}li{margin:4px 0}li::marker{color:var(--rose)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}th{color:var(--mauve)}
+.kpi{display:flex;gap:10px;flex-wrap:wrap}.kpi div{flex:1;min-width:120px;background:var(--blush);border-radius:14px;padding:12px}.kpi b{display:block;font-size:24px;color:var(--cocoa)}
+pre{background:#2E1F23;color:#FBE3EC;border-radius:12px;padding:12px;font-size:12px;overflow:auto;max-height:320px}
+footer{text-align:center;font-size:13px;color:var(--mauve);margin-top:28px}a{color:var(--cocoa)}
+.muted{color:var(--mauve);font-size:13px}
+</style></head><body><div class="wrap">
+<div class="hero"><span class="tag">LIVE DEMO</span><h1>QA Pipeline Router</h1><p>A multi-stage QA pipeline that validates, enriches and routes creative cards. Submit good and bad cards, take the downstream API offline and watch the circuit breaker protect the system.</p></div><div class="grid"><div class="card"><h2>1 · Submit a card to the QA pipeline</h2>
+<label>Card title</label><input id="ti" value="Holiday offer · 30s cut">
+<label>Asset link</label><input id="as" value="https://drive.example.com/file/abc123">
+<label>Duration (seconds)</label><input id="du" type="number" value="30">
+<label>Platform</label><select id="pl"><option>Meta</option><option>TikTok</option><option>YouTube</option><option></option></select>
+<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="down" style="width:auto"> Simulate downstream API outage</label>
+<button onclick="submit_()">SUBMIT CARD</button> <button class="ghost" onclick="for(let i=0;i<5;i++)submit_(true)">SUBMIT 5 RANDOM</button></div>
+<div class="card"><h2>2 · Stage handlers</h2><div id="stages"></div><h2 style="margin-top:14px">Circuit breaker</h2><div id="cb"></div></div></div>
+<div class="card" style="margin-top:18px"><h2>Shadow parity (new script vs legacy workflow)</h2><div class="kpi" id="kpi"></div></div>
+<div class="card" style="margin-top:18px"><h2>Pipeline log</h2><div id="log" style="max-height:340px;overflow:auto"></div></div>
+<script>
+const $=i=>document.getElementById(i);const ST=["1 · Validate","2 · Enrich","4 · Route to QA","5 · Hand off"];let cards=0,par={m:0,x:0},fails=0,open=false,log=[],parked=0;
+function L(t,m){log.unshift(`<div style="border-bottom:1px solid var(--line);padding:6px 0"><span class="pill ${t}">${t=='low'?'ok':t=='medium'?'parked':'error'}</span> ${m}</div>`)}
+function validate(c){const e=[];if(!/^https:\/\/.+/.test(c.asset))e.push("asset link missing");if(!(c.dur>0&&c.dur<=180))e.push("duration out of range");if(!c.plat)e.push("platform blank");return e}
+function submit_(rand){const c=rand?{title:"Card "+(cards+1),asset:Math.random()<.85?"https://drive.example.com/f/"+cards:"",dur:[15,30,45,0,60][Math.floor(Math.random()*5)],plat:["Meta","TikTok","",""][Math.floor(Math.random()*3)]}:{title:$("ti").value,asset:$("as").value,dur:+$("du").value,plat:$("pl").value};cards++;
+ const errs=validate(c);if(errs.length){parked++;L("medium",`<b>${c.title}</b> parked at Validate: ${errs.join(", ")}. Coordinator alerted.`);return draw(1)}
+ if(open){L("high",`<b>${c.title}</b> held: circuit OPEN, queued until downstream recovers`);return draw(2)}
+ if($("down").checked){fails++;if(fails>=3){open=true;L("high","3 consecutive failures → circuit breaker OPEN. Stopped calling the API.")}else L("high",`<b>${c.title}</b> failed at Hand off (attempt ${fails}/3)`);return draw(3)}
+ fails=0;const legacy=c.plat=="Meta"?"QA-Meta":"QA-General",ours=c.plat=="Meta"?"QA-Meta":"QA-General";legacy==ours?par.m++:par.x++;
+ L("low",`<b>${c.title}</b> passed all 4 stages → ${ours} queue · parity ✓`);draw(4)}
+function reset(){open=false;fails=0;$("down").checked=false;L("low","Circuit breaker CLOSED after health check");draw()}
+function draw(stage){$("stages").innerHTML=ST.map((s,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)"><span>${s}</span><span class="pill ${stage===undefined?'low':i<stage?'low':i==stage-1?'low':i==stage?'high':'medium'}">${stage===undefined||i<stage?'ready':'—'}</span></div>`).join("");
+ $("cb").innerHTML=`<span class="pill ${open?'high':'low'}" style="font-size:14px">${open?'OPEN · calls paused':'CLOSED · healthy'}</span> ${open?'<button class="ghost" style="padding:5px 12px" onclick="reset()">Run health check</button>':''}`;
+ const tot=par.m+par.x;$("kpi").innerHTML=`<div><b>${cards}</b>cards processed</div><div><b>${parked}</b>parked for fixes</div><div><b>${tot?Math.round(par.m/tot*100):100}%</b>shadow parity</div><div><b>${tot>=5&&par.x==0?'READY':'—'}</b>cutover readiness</div>`;$("log").innerHTML=log.join("")||"<span class='muted'>Submit a card.</span>"}
+draw();
+</script>
+<footer>Built by <b>Nae Kitakado</b>, AI Automation Consultant · <a href="https://github.com/naekitakadoportfolio">GitHub</a> · <a href="https://www.linkedin.com/in/nae-k-203194265">LinkedIn</a> · <a href="https://sider.ai/agents/web-creator/share/695ea81100a621619985fdfb">Portfolio</a><br>All data is fictional. This demo runs entirely in your browser.</footer></div></body></html>
