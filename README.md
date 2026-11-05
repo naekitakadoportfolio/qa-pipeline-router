@@ -10,30 +10,66 @@
 
 # QA Pipeline Router
 
-A multi-stage QA pipeline that validates, enriches and routes creative cards. Submit good and bad cards, take the downstream API offline and watch the circuit breaker protect the system.
+A multi-page app for a staged QA pipeline that validates, enriches, reviews and hands off creative cards. Bad data is parked, a circuit breaker protects the downstream API, and shadow parity drives a cutover checklist.
 
-> **Portfolio rebuild.** This is a from-scratch recreation of a production system I designed and run, rebuilt with **fictional data** and no client names, code or branding. The live demo runs entirely in the browser.
+> **Portfolio rebuild.** A from-scratch recreation of a production system I designed and run (DataQA pipeline). It uses **fictional data**, with no client names, code or branding.
 
-## The problem
-Four high-volume no-code workflow steps validated and routed ad cards into QA. Together they consumed about 381k billable tasks over seven months, failed silently on bad data, and had no protection when a downstream API was down.
+## ✨ Features
+- **Overview:** stage throughput bars, parity, circuit-breaker state and recent activity
+- **Submit card:** form with validation rules (https asset link, 1–180s duration, platform, title); invalid cards are parked with reasons
+- **Pipeline board:** Kanban by stage; drag cards forward (no skipping stages) or click ▶ Next
+- **Parked cards:** fix fields inline and resubmit
+- **Circuit breaker:** simulate a downstream outage, adjust the failure threshold, run a health check, retry held hand-offs
+- **Parity & cutover:** legacy vs new routing comparison and a readiness checklist that gates the **Execute cutover** button
+- **Logs:** a full pipeline log
+- Light/dark theme, responsive layout, state saved in your browser, and one-click **Reset demo data**
 
-## Impact in production
-Consolidated four workflow steps into one multi-file script. Each stage ran in shadow mode with parity checks before cutover, and the legacy step was turned off the same minute its replacement went live (single-writer rule). This drove a billing-tier downgrade.
+## 🧭 Try it
+1. *Submit card* with Platform left blank → parked
+2. *Parked cards* → choose a platform → **Fix & resubmit**
+3. *Circuit breaker* → simulate an outage → move cards to Hand off on the board until the breaker opens
+4. Run a **health check** after restoring the API
+5. *Parity & cutover* → tick the checklist → **Execute cutover**
 
-## What it demonstrates
-| Capability | How |
-|---|---|
-| Stage-based pipeline | Validate → Enrich → Route → Hand off handlers |
-| Data validation | Required fields, ranges and URL format, with bad cards parked instead of dropped |
-| Circuit breaker | Stops calling a failing API after 3 errors, resumes after a health check |
-| Shadow-mode parity | Compares new vs legacy routing before cutover |
-| Cutover readiness | Go/no-go metric from parity data |
+Open the **[live demo](https://naekitakadoportfolio.github.io/qa-pipeline-router/)**.
 
-## Production architecture
-Config.gs · Router.gs · Validation.gs · stage handlers · RetryQueue.gs · ParkedSweep.gs · CircuitBreaker.gs · ShadowLog.gs · SlackAlerts.gs · Dashboard.html
+## 🏗 Production architecture
+| Layer | Production | This demo |
+|---|---|---|
+| Stages | Validate / Enrich / Route / Hand off handler files | `advance()` |
+| Validation | Validation.gs rules | `validate()` |
+| Parking | ParkedSweep.gs + owner alerts | Parked column + log |
+| Resilience | CircuitBreaker.gs | `callApi()` + `S.cb` |
+| Cutover | ShadowLog.gs parity + single-writer rule | Parity report + checklist |
 
-## Try it
-Open the **[live demo](https://naekitakadoportfolio.github.io/qa-pipeline-router/)** or run `index.html` locally. No install needed.
+## 📁 Project structure
+```
+qa-pipeline-router/
+├── index.html        # built app (open this)
+├── src/
+│   ├── app.js        # state, views, business logic
+│   └── app.json      # app config: nav, theme, storage key
+├── assets/banner.svg
+├── README.md
+└── LICENSE
+```
+
+## 🚀 Run locally
+No install needed. Open `index.html`, or:
+```bash
+python3 -m http.server 8000   # http://localhost:8000
+```
+
+## 🧩 Implementation notes
+- `advance()` re-validates on every move, so fixed cards flow on automatically
+- `callApi()` counts consecutive failures and opens the circuit at the threshold
+- Parity auto-checks once there are 30+ samples at ≥ 98%
+- Board drag-and-drop blocks skipping stages
+
+## 🗺 Roadmap
+- SLA timers per stage
+- Bulk resubmit for parked cards
+- Export of the parity diff report
 
 ---
 <p align="center"><sub>Built by <b>Nae Kitakado</b>, AI Automation Consultant · <a href="https://www.linkedin.com/in/nae-k-203194265">LinkedIn</a> · <a href="https://sider.ai/agents/web-creator/share/695ea81100a621619985fdfb">Portfolio</a> · open to retainer &amp; part-time consulting</sub></p>

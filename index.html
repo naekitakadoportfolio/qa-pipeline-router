@@ -1,7 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>QA Pipeline Router · Nae Kitakado</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
+<title>QA Pipeline Router · Demo</title><meta name="description" content="Multi-stage QA pipeline with validation, circuit breaker and shadow parity">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
 :root{--bg1:#EAF4FA;--bg2:#D7EAF5;--ink:#14384E;--mauve:#4F6E80;--cocoa:#1D4C93;--sky:#89CDE7;--card:rgba(255,255,255,.62);--line:rgba(20,56,78,.14);--blush:rgba(137,205,231,.22);--rose:#89CDE7;--ok-bg:#DDF1E4;--ok:#1E5A36;--warn-bg:#FCEBC8;--warn:#7A4E12;--bad-bg:#F8D7DA;--bad:#8A2C3A}
 [data-theme=dark]{--bg1:#0B1E2A;--bg2:#14384E;--ink:#E6F2F8;--mauve:#9BB8C8;--card:rgba(20,56,78,.55);--line:rgba(137,205,231,.18);--blush:rgba(137,205,231,.12);--cocoa:#89CDE7;--ok-bg:rgba(46,160,90,.2);--ok:#8FE0AE;--warn-bg:rgba(230,160,40,.2);--warn:#F5C97A;--bad-bg:rgba(220,80,90,.2);--bad:#F5A3AC}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,'Segoe UI',system-ui,sans-serif;color:var(--ink);background:linear-gradient(160deg,var(--bg1),var(--bg2));background-attachment:fixed;min-height:100vh}
@@ -26,32 +25,94 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 pre{background:#0B1E2A;color:#CFE8F4;border-radius:10px;padding:12px;font-size:12px;overflow:auto;max-height:320px}
 footer{text-align:center;font-size:12px;color:var(--mauve);margin-top:28px}a{color:var(--cocoa)}.muted{color:var(--mauve);font-size:13px}
 .hero:after{display:none}
-</style></head><body><div class="wrap"><div class="topbar"><span class="brand">OPERATIONS CONSOLE · DEMO</span><button class="ghost" id="themeBtn" style="margin:0;padding:6px 12px" onclick="(()=>{const h=document.documentElement,n=h.dataset.theme==='dark'?'light':'dark';h.dataset.theme=n;try{localStorage.setItem('demoTheme',n)}catch(e){};themeBtn.textContent=n==='dark'?'☀️ Light':'🌙 Dark'})()">🌙 Dark</button></div>
-<script>try{const s=localStorage.getItem('demoTheme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=s;addEventListener('DOMContentLoaded',()=>themeBtn.textContent=s==='dark'?'☀️ Light':'🌙 Dark')}catch(e){}</script>
-<div class="hero"><span class="tag">LIVE DEMO · FICTIONAL DATA</span><h1>QA Pipeline Router</h1><p>A multi-stage QA pipeline that validates, enriches and routes creative cards. Submit good and bad cards, take the downstream API offline and watch the circuit breaker protect the system.</p></div><div class="grid"><div class="card"><h2>1 · Submit a card to the QA pipeline</h2>
-<label>Card title</label><input id="ti" value="Holiday offer · 30s cut">
-<label>Asset link</label><input id="as" value="https://drive.example.com/file/abc123">
-<label>Duration (seconds)</label><input id="du" type="number" value="30">
-<label>Platform</label><select id="pl"><option>Meta</option><option>TikTok</option><option>YouTube</option><option></option></select>
-<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="down" style="width:auto"> Simulate downstream API outage</label>
-<button onclick="submit_()">SUBMIT CARD</button> <button class="ghost" onclick="for(let i=0;i<5;i++)submit_(true)">SUBMIT 5 RANDOM</button></div>
-<div class="card"><h2>2 · Stage handlers</h2><div id="stages"></div><h2 style="margin-top:14px">Circuit breaker</h2><div id="cb"></div></div></div>
-<div class="card" style="margin-top:18px"><h2>Shadow parity (new script vs legacy workflow)</h2><div class="kpi" id="kpi"></div></div>
-<div class="card" style="margin-top:18px"><h2>Pipeline log</h2><div id="log" style="max-height:340px;overflow:auto"></div></div>
+</style><style>
+.shell{display:grid;grid-template-columns:220px 1fr;gap:16px;margin-top:4px}@media(max-width:820px){.shell{grid-template-columns:1fr}}
+.side{background:var(--card);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:16px;padding:14px;height:fit-content;position:sticky;top:12px}
+.side a{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:10px;color:var(--ink);text-decoration:none;font-weight:500;margin:2px 0}
+.side a.on{background:var(--cocoa);color:#fff}.side a:hover:not(.on){background:var(--blush)}
+.badge{background:#C0392B;color:#fff;border-radius:99px;font-size:11px;padding:1px 7px}
+.who{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.cal .h{font-size:11px;font-weight:700;color:var(--mauve);text-align:center;letter-spacing:.08em}
+.day{min-height:92px;border:1px solid var(--line);border-radius:10px;padding:6px;background:rgba(255,255,255,.35);cursor:pointer;font-size:12px;overflow:hidden}
+[data-theme=dark] .day{background:rgba(255,255,255,.04)}.day:hover{outline:2px solid var(--sky)}.day.off{opacity:.4}.day.we{background:var(--blush)}.day.today{outline:2px solid var(--cocoa)}.day.sel{background:rgba(29,76,147,.18)}
+.ev{border-radius:5px;padding:1px 5px;margin-top:3px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.Vacation{background:#1D4C93}.Sick{background:#C27C0E}.Personal{background:#2E8B57}.Protected{background:#6B7A86}.Holiday{background:#89CDE7;color:#14384E}.pending{opacity:.6;border:1px dashed #fff}
+.toast{position:fixed;right:18px;bottom:18px;background:var(--cocoa);color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;transform:translateY(10px);transition:.25s;z-index:9;max-width:340px}.toast.show{opacity:1;transform:none}
+.modal{position:fixed;inset:0;background:rgba(10,30,45,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}.modal.show{display:flex}.modal .card{max-width:480px;width:100%;background:var(--bg1)}
+.row{display:flex;gap:10px}.row>*{flex:1}.legend span{margin-right:10px;font-size:12px}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle}
+.bar{background:var(--blush);border-radius:99px;height:8px;margin-top:4px}.bar div{height:8px;border-radius:99px;background:var(--cocoa)}
+</style><style></style></head><body><div class="wrap">
+<div class="topbar"><span class="brand">QA PIPELINE · DEMO</span><span><button class="ghost" style="margin:0;padding:6px 12px" onclick="resetAll()">↺ Reset demo data</button> <button class="ghost" id="themeBtn" style="margin:0;padding:6px 12px" onclick="toggleTheme()">🌙 Dark</button></span></div>
+<div class="shell"><nav class="side"><a href="#/overview" data-r="overview">🏠 Overview <span class="badge" data-b="overview"></span></a>
+<a href="#/submit" data-r="submit">➕ Submit card <span class="badge" data-b="submit"></span></a>
+<a href="#/board" data-r="board">🗂 Pipeline board <span class="badge" data-b="board"></span></a>
+<a href="#/parked" data-r="parked">🅿️ Parked cards <span class="badge" data-b="parked"></span></a>
+<a href="#/health" data-r="health">🩺 Circuit breaker <span class="badge" data-b="health"></span></a>
+<a href="#/parity" data-r="parity">📊 Parity & cutover <span class="badge" data-b="parity"></span></a>
+<a href="#/logs" data-r="logs">🔔 Logs <span class="badge" data-b="logs"></span></a></nav><main id="view"></main></div>
+<div class="modal" id="modal" onclick="if(event.target==this)closeM()"><div class="card" id="mbody"></div></div><div class="toast" id="toast"></div>
+<footer>Portfolio rebuild by <b>Nae Kitakado</b>, AI Automation Consultant · <a href="https://github.com/naekitakadoportfolio/qa-pipeline-router">Source</a> · <a href="https://www.linkedin.com/in/nae-k-203194265">LinkedIn</a><br>All data is fictional. Changes are saved in your browser only.</footer></div>
 <script>
-const $=i=>document.getElementById(i);const ST=["1 · Validate","2 · Enrich","4 · Route to QA","5 · Hand off"];let cards=0,par={m:0,x:0},fails=0,open=false,log=[],parked=0;
-function L(t,m){log.unshift(`<div style="border-bottom:1px solid var(--line);padding:6px 0"><span class="pill ${t}">${t=='low'?'ok':t=='medium'?'parked':'error'}</span> ${m}</div>`)}
-function validate(c){const e=[];if(!/^https:\/\/.+/.test(c.asset))e.push("asset link missing");if(!(c.dur>0&&c.dur<=180))e.push("duration out of range");if(!c.plat)e.push("platform blank");return e}
-function submit_(rand){const c=rand?{title:"Card "+(cards+1),asset:Math.random()<.85?"https://drive.example.com/f/"+cards:"",dur:[15,30,45,0,60][Math.floor(Math.random()*5)],plat:["Meta","TikTok","",""][Math.floor(Math.random()*3)]}:{title:$("ti").value,asset:$("as").value,dur:+$("du").value,plat:$("pl").value};cards++;
- const errs=validate(c);if(errs.length){parked++;L("medium",`<b>${c.title}</b> parked at Validate: ${errs.join(", ")}. Coordinator alerted.`);return draw(1)}
- if(open){L("high",`<b>${c.title}</b> held: circuit OPEN, queued until downstream recovers`);return draw(2)}
- if($("down").checked){fails++;if(fails>=3){open=true;L("high","3 consecutive failures → circuit breaker OPEN. Stopped calling the API.")}else L("high",`<b>${c.title}</b> failed at Hand off (attempt ${fails}/3)`);return draw(3)}
- fails=0;const legacy=c.plat=="Meta"?"QA-Meta":"QA-General",ours=c.plat=="Meta"?"QA-Meta":"QA-General";legacy==ours?par.m++:par.x++;
- L("low",`<b>${c.title}</b> passed all 4 stages → ${ours} queue · parity ✓`);draw(4)}
-function reset(){open=false;fails=0;$("down").checked=false;L("low","Circuit breaker CLOSED after health check");draw()}
-function draw(stage){$("stages").innerHTML=ST.map((s,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)"><span>${s}</span><span class="pill ${stage===undefined?'low':i<stage?'low':i==stage-1?'low':i==stage?'high':'medium'}">${stage===undefined||i<stage?'ready':'—'}</span></div>`).join("");
- $("cb").innerHTML=`<span class="pill ${open?'high':'low'}" style="font-size:14px">${open?'OPEN · calls paused':'CLOSED · healthy'}</span> ${open?'<button class="ghost" style="padding:5px 12px" onclick="reset()">Run health check</button>':''}`;
- const tot=par.m+par.x;$("kpi").innerHTML=`<div><b>${cards}</b>cards processed</div><div><b>${parked}</b>parked for fixes</div><div><b>${tot?Math.round(par.m/tot*100):100}%</b>shadow parity</div><div><b>${tot>=5&&par.x==0?'READY':'—'}</b>cutover readiness</div>`;$("log").innerHTML=log.join("")||"<span class='muted'>Submit a card.</span>"}
-draw();
-</script>
-<footer>Built by <b>Nae Kitakado</b>, AI Automation Consultant · <a href="https://github.com/naekitakadoportfolio">GitHub</a> · <a href="https://www.linkedin.com/in/nae-k-203194265">LinkedIn</a> · <a href="https://sider.ai/agents/web-creator/share/695ea81100a621619985fdfb">Portfolio</a><br>All data is fictional. This demo runs entirely in your browser.</footer></div></body></html>
+const STAGES=["Validate","Enrich","QA review","Hand off","Done"];const PLATS=["Meta","TikTok","YouTube"];
+function SEED(){let id=100;const c=(title,stage,plat,dur,asset,extra={})=>({id:"QA-"+(id++),title,stage,plat,dur,asset,owner:"Coordinator A",created:Date.now()-Math.random()*864e5*3,...extra});
+ return{user:"Coordinator A",nid:110,cb:{state:"CLOSED",fails:0,opened:null,threshold:3},down:false,par:{m:41,x:1,log:[]},
+ cards:[c("Holiday offer · 30s","QA review","Meta",30,"https://drive.example.com/f/a1"),c("UGC remix v2","Enrich","TikTok",15,"https://drive.example.com/f/a2"),c("Founder story","Hand off","YouTube",60,"https://drive.example.com/f/a3"),c("Webinar teaser","Done","Meta",20,"https://drive.example.com/f/a4"),
+  c("Spring hook test","Parked","",45,"",{errs:["asset link missing","platform blank"]}),c("Long-form demo","Parked","YouTube",240,"https://drive.example.com/f/a6",{errs:["duration out of range"]})],
+ checklist:{parity:false,backfill:false,alerts:true,rollback:false,legacyOff:false},log:[]}}
+const P=(c,t)=>`<span class="pill ${c}">${t}</span>`;
+function validate(c){const e=[];if(!/^https:\/\/\S+\.\S+/.test(c.asset||""))e.push("asset link missing");if(!(c.dur>0&&c.dur<=180))e.push("duration out of range");if(!PLATS.includes(c.plat))e.push("platform blank");if(!c.title||c.title.length<3)e.push("title too short");return e}
+function callApi(c){if(S.cb.state=="OPEN"){L(`⏸ ${c.id} held · circuit OPEN`);return false}
+ if(S.down){S.cb.fails++;L(`❌ ${c.id} hand-off failed (${S.cb.fails}/${S.cb.threshold})`);if(S.cb.fails>=S.cb.threshold){S.cb.state="OPEN";S.cb.opened=Date.now();L(`🚨 Circuit breaker OPEN after ${S.cb.threshold} failures · alert sent`)}return false}
+ S.cb.fails=0;return true}
+function shadow(c){const legacy=c.plat=="Meta"?"QA-Meta":"QA-General",ours=c.plat=="Meta"?"QA-Meta":"QA-General";const ok=Math.random()>.03&&legacy==ours;ok?S.par.m++:S.par.x++;S.par.log.unshift({id:c.id,legacy,ours:ok?ours:"QA-Escalations",ok});if(S.par.log.length>50)S.par.log.length=50}
+function advance(c){const errs=validate(c);if(errs.length){c.stage="Parked";c.errs=errs;L(`🅿️ ${c.id} parked: ${errs.join(", ")} · owner alerted`);return}
+ c.errs=[];const i=STAGES.indexOf(c.stage);if(c.stage=="Parked"){c.stage="Validate";return advance(c)}
+ if(c.stage=="Hand off"){if(!callApi(c))return;}
+ if(i<STAGES.length-1){c.stage=STAGES[i+1];if(c.stage=="QA review")shadow(c);L(`➡️ ${c.id} → ${c.stage}`)}}
+function card(id){return S.cards.find(c=>c.id==id)}
+const V={};
+V.overview=()=>{const by=s=>S.cards.filter(c=>c.stage==s).length,tot=S.par.m+S.par.x;return`<div class="hero"><span class="tag">QA PIPELINE</span><h1>Pipeline overview</h1><p>Cards move through Validate → Enrich → QA review → Hand off. Bad data is parked, never dropped.</p></div>
+<div class="card" style="margin-top:16px"><div class="kpi"><div><b>${S.cards.length}</b>cards</div><div><b>${by("Parked")}</b>parked</div><div><b>${by("Done")}</b>handed off</div><div><b>${tot?Math.round(S.par.m/tot*100):100}%</b>shadow parity</div><div><b style="color:${S.cb.state=="OPEN"?"#C0392B":"inherit"}">${S.cb.state}</b>circuit breaker</div></div></div>
+<div class="grid"><div class="card"><h2>Stage throughput</h2>${["Parked",...STAGES].map(s=>{const n=by(s);return`<div style="margin:6px 0">${s} <span class="muted">${n}</span><div class="bar"><div style="width:${n/Math.max(S.cards.length,1)*100}%;${s=="Parked"?"background:#C27C0E":""}"></div></div></div>`}).join("")}</div>
+<div class="card"><h2>Quick actions</h2><button onclick="go('submit')">➕ Submit card</button> <button class="ghost" onclick="go('board')">Open board</button> <button class="ghost" onclick="go('parked')">Fix parked (${by("Parked")})</button><h2 style="margin-top:14px">Recent</h2>${S.log.slice(0,5).map(l=>`<div class="muted">${l.t} · ${esc(l.m)}</div>`).join("")}</div></div>`};
+V.submit=()=>`<div class="grid"><div class="card"><h2>Submit a card</h2><label>Title</label><input id="fT" value="New hook test"><label>Asset link</label><input id="fA" value="https://drive.example.com/f/new"><div class="row"><div><label>Duration (s)</label><input id="fD" type="number" value="30"></div><div><label>Platform</label><select id="fP"><option value="">— choose —</option>${PLATS.map(p=>`<option>${p}</option>`).join("")}</select></div></div>
+<button onclick="submitCard()">SUBMIT TO PIPELINE</button> <button class="ghost" onclick="submitRandom(5)">SUBMIT 5 RANDOM</button></div>
+<div class="card"><h2>Validation rules</h2><ul><li>Asset link must be a full https URL</li><li>Duration between 1 and 180 seconds</li><li>Platform must be ${PLATS.join(", ")}</li><li>Title at least 3 characters</li></ul><p class="muted">Cards that fail are parked with reasons and the owner is alerted, so nothing is silently dropped.</p></div></div>`;
+function submitCard(){const c={id:"QA-"+(S.nid++),title:$("fT").value.trim(),asset:$("fA").value.trim(),dur:+$("fD").value,plat:$("fP").value,stage:"Validate",owner:S.user,created:Date.now()};S.cards.unshift(c);L(`📥 ${c.id} submitted by ${S.user}`);advance(c);toast(c.stage=="Parked"?"🅿️ Parked: "+c.errs.join(", "):"✅ Passed validation → "+c.stage);go("board")}
+function submitRandom(n){for(let i=0;i<n;i++){const c={id:"QA-"+(S.nid++),title:"Card "+S.nid,asset:Math.random()<.8?"https://drive.example.com/f/"+S.nid:"",dur:[15,30,45,0,60,200][Math.floor(Math.random()*6)],plat:Math.random()<.8?PLATS[Math.floor(Math.random()*3)]:"",stage:"Validate",owner:"Auto",created:Date.now()};S.cards.unshift(c);advance(c)}toast(n+" cards submitted");route()}
+V.board=()=>`<div class="card"><h2>Pipeline board</h2><p class="muted">Drag a card to another column, or use ▶ to run its next stage.</p><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;overflow:auto">${STAGES.map(s=>`<div ondragover="event.preventDefault()" ondrop="dropTo('${s}',event)" style="background:var(--blush);border-radius:12px;padding:8px;min-height:240px;min-width:150px"><b style="font-size:12px;letter-spacing:.08em">${s.toUpperCase()}</b> <span class="muted">${S.cards.filter(c=>c.stage==s).length}</span>
+${S.cards.filter(c=>c.stage==s).map(c=>`<div draggable="true" ondragstart="event.dataTransfer.setData('id','${c.id}')" style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:6px;font-size:13px"><b>${c.id}</b><br>${esc(c.title)}<br><span class="muted">${c.plat||"—"} · ${c.dur}s</span>${s!="Done"?`<br><button class="ghost" style="margin:4px 0 0;padding:3px 10px" onclick="advance(card('${c.id}'));route()">▶ Next</button>`:""}</div>`).join("")}</div>`).join("")}</div></div>`;
+function dropTo(s,ev){const c=card(ev.dataTransfer.getData("id"));if(!c)return;if(STAGES.indexOf(s)>STAGES.indexOf(c.stage)+1){toast("⛔ Stages can't be skipped");return}if(s=="Hand off"||STAGES.indexOf(s)>STAGES.indexOf(c.stage)){advance(c)}else{c.stage=s;L(`↩️ ${c.id} moved back to ${s}`)}route()}
+V.parked=()=>{const ps=S.cards.filter(c=>c.stage=="Parked");return`<div class="card"><h2>Parked cards (${ps.length})</h2>${ps.length?ps.map(c=>`<div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0"><b>${c.id}</b> ${esc(c.title)} ${(c.errs||[]).map(e=>P("high",e)).join("")}<div class="row" style="margin-top:6px"><input id="a_${c.id}" value="${esc(c.asset)}" placeholder="Asset link"><input id="d_${c.id}" type="number" value="${c.dur}" style="max-width:100px"><select id="p_${c.id}"><option value="">— platform —</option>${PLATS.map(p=>`<option ${p==c.plat?"selected":""}>${p}</option>`).join("")}</select></div><button onclick="fixCard('${c.id}')">Fix & resubmit</button></div>`).join(""):"<p class='muted'>🎉 Nothing parked.</p>"}</div>`};
+function fixCard(id){const c=card(id);c.asset=$("a_"+id).value.trim();c.dur=+$("d_"+id).value;c.plat=$("p_"+id).value;advance(c);toast(c.stage=="Parked"?"Still invalid: "+c.errs.join(", "):"✅ Resubmitted → "+c.stage);L(`🛠 ${id} fixed by ${S.user}`);route()}
+V.health=()=>`<div class="grid"><div class="card"><h2>Circuit breaker</h2><p style="font-size:20px">${P(S.cb.state=="OPEN"?"high":"low",S.cb.state=="OPEN"?"OPEN · calls paused":"CLOSED · healthy")}</p><p class="muted">Consecutive failures: ${S.cb.fails}/${S.cb.threshold}${S.cb.opened?` · opened ${new Date(S.cb.opened).toLocaleTimeString()}`:""}</p>
+<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" style="width:auto" ${S.down?"checked":""} onchange="S.down=this.checked;L(this.checked?'🔌 Downstream API outage simulated':'🔌 Downstream API restored');route()"> Simulate downstream API outage</label>
+<label>Failure threshold</label><input type="number" min="1" max="10" value="${S.cb.threshold}" onchange="S.cb.threshold=Math.max(1,Math.min(10,+this.value));route()">
+<button onclick="healthCheck()">RUN HEALTH CHECK</button></div>
+<div class="card"><h2>Held at hand-off</h2>${S.cards.filter(c=>c.stage=="Hand off").map(c=>`<div>${c.id} · ${esc(c.title)}</div>`).join("")||"<p class='muted'>None.</p>"}<button class="ghost" onclick="S.cards.filter(c=>c.stage=='Hand off').forEach(advance);route()">Retry all hand-offs</button></div></div>`;
+function healthCheck(){if(S.down){toast("❌ Health check failed · circuit stays OPEN");L("🩺 Health check failed");return route()}S.cb={...S.cb,state:"CLOSED",fails:0,opened:null};L("🩺 Health check passed · circuit CLOSED");toast("✅ Circuit closed");route()}
+V.parity=()=>{const tot=S.par.m+S.par.x,pct=tot?S.par.m/tot*100:100,ck=S.checklist;ck.parity=pct>=98&&tot>=30;const items=[["parity","Shadow parity ≥ 98% over 30+ cards (auto)"],["backfill","Historical cards backfilled"],["alerts","Alerts routed to coordinators"],["rollback","Rollback plan documented"],["legacyOff","Legacy workflow scheduled OFF the same minute (single-writer rule)"]];const ready=items.every(([k])=>ck[k]);
+return`<div class="grid"><div class="card"><h2>Shadow parity report</h2><div class="kpi"><div><b>${pct.toFixed(1)}%</b>parity</div><div><b>${S.par.m}</b>matches</div><div><b>${S.par.x}</b>diffs</div></div><table style="margin-top:10px"><tr><th>Card</th><th>Legacy</th><th>New</th><th></th></tr>${S.par.log.slice(0,10).map(r=>`<tr><td>${r.id}</td><td>${r.legacy}</td><td>${r.ours}</td><td>${r.ok?"✅":"❌"}</td></tr>`).join("")}</table></div>
+<div class="card"><h2>Cutover readiness</h2>${items.map(([k,l])=>`<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" style="width:auto" ${ck[k]?"checked":""} ${k=="parity"?"disabled":""} onchange="S.checklist['${k}']=this.checked;route()"> ${l}</label>`).join("")}
+<p style="margin-top:12px">${P(ready?"low":"medium",ready?"READY TO CUT OVER":"NOT READY")}</p><button ${ready?"":"disabled style='opacity:.5'"} onclick="L('🚀 Cutover executed: new pipeline LIVE, legacy OFF');toast('Cutover complete');route()">EXECUTE CUTOVER</button></div></div>`};
+V.logs=()=>`<div class="card"><h2>Pipeline log</h2>${S.log.map(l=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="muted">${l.t}</span> · ${esc(l.m)}</div>`).join("")||"<p class='muted'>No log entries.</p>"}</div>`;
+function badge(r){return r=="parked"?S.cards.filter(c=>c.stage=="Parked").length||"":r=="health"&&S.cb.state=="OPEN"?"!":""}
+
+
+const $=i=>document.getElementById(i);const esc=s=>String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const KEY="qaprDemo";let S;try{S=JSON.parse(localStorage.getItem(KEY))||SEED()}catch(e){S=SEED()}if(!S.log)S.log=[];
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function toast(m){const t=$("toast");t.innerHTML=m;t.classList.add("show");clearTimeout(t._);t._=setTimeout(()=>t.classList.remove("show"),3000)}
+function L(m){S.log.unshift({t:new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}),m});if(S.log.length>200)S.log.length=200}
+function openM(h){$("mbody").innerHTML=h;$("modal").classList.add("show")}function closeM(){$("modal").classList.remove("show")}
+function go(r){location.hash="#/"+r}
+function route(){const r=(location.hash.replace("#/","").split("?")[0]||Object.keys(V)[0]);document.querySelectorAll(".side a").forEach(a=>a.classList.toggle("on",a.dataset.r==r));
+ try{$("view").innerHTML=(V[r]||V[Object.keys(V)[0]])()}catch(e){console.error(e);$("view").innerHTML='<div class="card"><h2>Something went wrong</h2><p class="muted">'+esc(e.message)+'</p></div>'}
+ document.querySelectorAll("[data-b]").forEach(b=>{const v=typeof badge=="function"?badge(b.dataset.b):"";b.textContent=v||"";b.style.display=v?"":"none"});
+ if(typeof onRoute=="function")onRoute(r);save()}
+function resetAll(){S=SEED();S.log=S.log||[];save();toast("Demo data reset");route()}
+function toggleTheme(){const h=document.documentElement,n=h.dataset.theme=="dark"?"light":"dark";h.dataset.theme=n;try{localStorage.setItem("demoTheme",n)}catch(e){}$("themeBtn").textContent=n=="dark"?"☀️ Light":"🌙 Dark"}
+try{const t=localStorage.getItem("demoTheme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=t;$("themeBtn").textContent=t=="dark"?"☀️ Light":"🌙 Dark"}catch(e){}
+addEventListener("hashchange",route);addEventListener("keydown",e=>{if(e.key=="Escape")closeM()});route();
+
+</script></body></html>

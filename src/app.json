@@ -1,0 +1,3 @@
+{"title":"QA Pipeline Router","brand":"QA PIPELINE","theme":"glass","storageKey":"qaprDemo","desc":"Multi-stage QA pipeline with validation, circuit breaker and shadow parity",
+"nav":[["overview","🏠 Overview"],["submit","➕ Submit card"],["board","🗂 Pipeline board"],["parked","🅿️ Parked cards"],["health","🩺 Circuit breaker"],["parity","📊 Parity & cutover"],["logs","🔔 Logs"]],
+"appJs":"/home/claude/repos2/qa-pipeline-router/src/app.js"}
